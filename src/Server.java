@@ -1,6 +1,5 @@
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -11,7 +10,15 @@ public class Server implements Newsinterface{
     private HashMap<Integer, Noticia> news;
     private HashMap<String, Integer> address;
 
-
+    public static void main(String[] args) {
+        try {
+            int porta = Integer.parseInt(args[0]); // Recebe com parâmetro o número da porta que o servidor irá escutar
+            LocateRegistry.createRegistry(porta).bind("Chibata", UnicastRemoteObject.exportObject(new Server(), porta));
+        } catch (Exception e) {
+            System.err.println(e);
+            System.exit(1);
+        }
+    }
 
 
     public Server() throws Exception{
@@ -28,25 +35,38 @@ public class Server implements Newsinterface{
         new Thread(()->{
             FileTime altered = null;
             while(true){
-                try{
-                    if (altered == null){
-                        Files.lines(Paths.get("news.txt")).forEach(line -> {
-                            String[] campos = line.split(",");
-                            Noticia temp = new Noticia(campos[0], Float.parseFloat(campos[1]));
-                            int codigo = temp.info.hashCode();
+                try {
+                    if (altered == null) {
+                        Files.lines(Paths.get("news.txt")).forEach(linha -> {
+                            String[] campos = linha.split(",");
+                            Noticia dados = new Noticia(campos[0], Float.parseFloat(campos[1]));
+                            int codigo = dados.info.hashCode();
 
-                            if (!news.containsKey(codigo) || news.get(codigo).nota != temp.nota){
-                                news.put(codigo, temp);
-                            }
+                            if (!news.containsKey(codigo) || news.get(codigo).nota != dados.nota)
+                                news.put(codigo, dados);
                         });
+
                         altered = Files.getLastModifiedTime(Paths.get("news.txt"));
-
-                    }else if (altered.compareTo(Files.getLastModifiedTime(Paths.get("news.txt"))) != 0){
-
-
+                    } else if (altered.compareTo(Files.getLastModifiedTime(Paths.get("news.txt"))) != 0)
+                        altered = null;
+                } catch (Exception e) {
+                    System.err.println(e);
                 }
-                }catch (Exception e){
-                    System.out.println("Unable to read archive : newx.txt");
+
+                /*
+                 * Verifica se exitem notícias sem classificação e às classifica
+                 */
+                for (int codigo : news.keySet()) {
+                    if (!news.get(codigo).classificado) {
+                        for (String endereco : address.keySet()) {
+                            try {
+                                Newsinterface noticia = (Newsinterface) LocateRegistry.getRegistry(endereco, address.get(endereco)).lookup("Chibata");
+                                noticia.classify(codigo);
+                            } catch (Exception e) {
+                                System.err.println("Não foi possivel se conectar ao servidor: " + endereco + ":" + address.get(endereco));
+                            }
+                        }
+                    }
                 }
 
             }
@@ -75,7 +95,7 @@ public class Server implements Newsinterface{
             // Pergunta aos servers a respeito da noticia e se acreditam que seja fake news ou não
             for (String endereco : address.keySet()) {
                 try {
-                    Newsinterface noticia = (Newsinterface) LocateRegistry.getRegistry(endereco, address.get(endereco)).lookup("Noticia");
+                    Newsinterface noticia = (Newsinterface) LocateRegistry.getRegistry(endereco, address.get(endereco)).lookup("Chibata");
                     resultado += noticia.point(code) < 3 ? -1 : 1;
                     votos++;
                 } catch (Exception e) {
@@ -99,15 +119,6 @@ public class Server implements Newsinterface{
                     }*/
                 }
             }
-        }
-    }
-    public static void main(String[] args) {
-        try {
-            int porta = Integer.parseInt(args[0]);
-            LocateRegistry.createRegistry(porta).bind("Noticia", (Newsinterface) UnicastRemoteObject.exportObject(new Server(), porta));
-        } catch (Exception e) {
-            System.err.println("Erro inesperado");
-            System.exit(1);
         }
     }
 }

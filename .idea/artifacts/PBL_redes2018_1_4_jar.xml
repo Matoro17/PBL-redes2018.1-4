@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="PBL-redes2018.1-4:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/PBL_redes2018_1_4_jar</output-path>
+    <root id="archive" name="PBL-redes2018.1-4.jar">
+      <element id="module-output" name="PBL-redes2018.1-4" />
+    </root>
+  </artifact>
+</component>
