@@ -54,7 +54,7 @@ public class Server implements Newsinterface{
                 }
 
                 /*
-                 * Verifica se exitem notícias sem classificação e às classifica
+                 * Checa se existem noticias na hash que não foram clissificadas pelos servidores e aplica o método classify
                  */
                 for (int codigo : news.keySet()) {
                     if (!news.get(codigo).classificado) {
@@ -92,7 +92,7 @@ public class Server implements Newsinterface{
             int resultado = 0;
             int votos = 0;
 
-            // Pergunta aos servers a respeito da noticia e se acreditam que seja fake news ou não
+            // Checa via RMI os servidores, e o que apontam para cada noticia do documento de texto, para saber se é fake news para eles uo não
             for (String endereco : address.keySet()) {
                 try {
                     Newsinterface noticia = (Newsinterface) LocateRegistry.getRegistry(endereco, address.get(endereco)).lookup("Chibata");
@@ -103,20 +103,14 @@ public class Server implements Newsinterface{
                 }
             }
 
-            // Altera a classificação da noticia em função da MAIORIA dos servidores envolvidos
+            // Altera a variavel booleana para a classificação para saber se mais da metade determinou algo com relação a noticia
             if (votos > address.size() / 2) {
                 news.get(code).classificado = true;
 
-                // Notifica as noticias que são fake
+                // Mostra as noticias que são fake
                 if (resultado < 0 && !news.get(code).notificada) {
                     System.out.println((news.get(code).info+"\n"));
                     news.get(code).notificada = true;
-                    /*try {
-                        Files.write(Paths.get("notificacoes.txt"), (news.get(code).info+"\n").getBytes(), StandardOpenOption.APPEND);
-                        news.get(code).notificada = true;
-                    }catch (Exception e) {
-                        System.err.println("Erro ao escrever no arquivo de notificações");
-                    }*/
                 }
             }
         }
